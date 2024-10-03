@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech to Text</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 1.2em;
+            white-space: pre-line; /* Preserve line breaks */
+        }
+        #start-btn {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Speech to Text</h1>
+    <select id="language-select">
+        <option value="en-US">English</option>
+        <option value="sw-KE">Kiswahili</option>
+    </select>
+    <br><br>
+    <button id="start-btn">Start Listening</button>
+    <p id="result"></p>
+
+    <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true; // Allow continuous listening
+            recognition.interimResults = false; // Only final results
+
+            let isRecording = false;
+            let lastResult = ""; // To store the last result for proper punctuation
+
+            // Start/stop recognition on button click
+            document.getElementById("start-btn").addEventListener("click", () => {
+                if (!isRecording) {
+                    const selectedLanguage = document.getElementById("language-select").value;
+                    recognition.lang = selectedLanguage; // Set language based on selection
+                    recognition.start();
+                    document.getElementById("start-btn").innerText = "Listening...";
+                    isRecording = true;
+                } else {
+                    recognition.stop();
+                    document.getElementById("start-btn").innerText = "Start Listening";
+                    isRecording = false;
+                }
+            });
+
+            // Function to format the recognized text
+            function formatText(text) {
+                // Capitalize the first letter of a new sentence
+                let formattedText = lastResult.trim() ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+
+                // Basic sentiment detection for questions and surprise
+                const trimmedText = formattedText.trim();
+                
+                if (trimmedText.endsWith("?") || trimmedText.includes("what") || trimmedText.includes("how") || trimmedText.includes("who")) {
+                    formattedText += '?';
+                } else if (trimmedText.toLowerCase().includes("omg") || trimmedText.toLowerCase().includes("wow") || trimmedText.toLowerCase().includes("incredible")) {
+                    formattedText += '!';
+                } else {
+                    formattedText += '.';
+                }
+
+                lastResult = formattedText; // Store the last formatted result
+                return formattedText;
+            }
+
+            // Event when speech is recognized
+            recognition.onresult = (event) => {
+                const speechToText = event.results[event.resultIndex][0].transcript;
+                const formattedOutput = formatText(speechToText);
+                document.getElementById("result").innerHTML += (formattedOutput + '<br>');
+            };
+
+            // Event for errors
+            recognition.onerror = (event) => {
+                const errorMessage = {
+                    'no-speech': 'No speech was detected. Please try again.',
+                    'audio-capture': 'No microphone was found.',
+                    'not-allowed': 'Permission to use microphone is denied.',
+                };
+                document.getElementById("result").innerText = errorMessage[event.error] || 'Error occurred during recognition.';
+            };
+
+            // Automatically stop when no audio is detected
+            recognition.onend = () => {
+                if (isRecording) {
+                    document.getElementById("result").innerText += '\nListening stopped. Click "Start Listening" to continue.';
+                    document.getElementById("start-btn").innerText = "Start Listening";
+                    isRecording = false;
+                }
+            };
+
+            // Restart recognition when audio is detected
+            recognition.onstart = () => {
+                console.log('Voice recognition activated. Try speaking into the microphone.');
+            };
+
+        } else {
+            console.error("SpeechRecognition is not supported in this browser.");
+            document.getElementById("result").innerText = "SpeechRecognition is not supported in this browser.";
+        }
+    </script>
+</body>
+</html>
