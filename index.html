@@ -13,40 +13,53 @@
         #result {
             margin-top: 20px;
             font-size: 1.2em;
-            white-space: pre-line; /* Preserve line breaks */
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            min-height: 100px;
+            word-wrap: break-word;
+            white-space: pre-wrap; /* Preserve line breaks */
         }
-        #start-btn {
+        #start-btn, #clear-btn, #backspace-btn {
             padding: 10px 20px;
             font-size: 1em;
             cursor: pointer;
+            margin: 10px;
+        }
+        #result[contenteditable="true"] {
+            outline: none; /* Remove the outline when the div is focused */
+            cursor: text;
         }
     </style>
 </head>
 <body>
     <h1>Speech to Text</h1>
     <select id="language-select">
-        <option value="en-US">English</option>
+        <option value="en-US">English (US)</option>
+        <option value="en-GB">English (UK)</option>
         <option value="sw-KE">Kiswahili</option>
+        <option value="fr-FR">French</option>
+        <option value="es-ES">Spanish</option>
     </select>
     <br><br>
     <button id="start-btn">Start Listening</button>
-    <p id="result"></p>
-
+    <button id="clear-btn">Clear Output</button>
+    <button id="backspace-btn">Backspace</button>
+    <div id="result" contenteditable="true"></div> <!-- Added contenteditable -->
+    
     <script>
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
-            recognition.continuous = true; // Allow continuous listening
-            recognition.interimResults = false; // Only final results
+            recognition.continuous = true;
+            recognition.interimResults = false;
 
             let isRecording = false;
-            let lastResult = ""; // To store the last result for proper punctuation
 
-            // Start/stop recognition on button click
             document.getElementById("start-btn").addEventListener("click", () => {
                 if (!isRecording) {
                     const selectedLanguage = document.getElementById("language-select").value;
-                    recognition.lang = selectedLanguage; // Set language based on selection
+                    recognition.lang = selectedLanguage;
                     recognition.start();
                     document.getElementById("start-btn").innerText = "Listening...";
                     isRecording = true;
@@ -57,34 +70,24 @@
                 }
             });
 
-            // Function to format the recognized text
-            function formatText(text) {
-                // Capitalize the first letter of a new sentence
-                let formattedText = lastResult.trim() ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+            document.getElementById("clear-btn").addEventListener("click", () => {
+                document.getElementById("result").innerText = ""; // Clear the result area
+            });
 
-                // Basic sentiment detection for questions and surprise
-                const trimmedText = formattedText.trim();
-                
-                if (trimmedText.endsWith("?") || trimmedText.includes("what") || trimmedText.includes("how") || trimmedText.includes("who")) {
-                    formattedText += '?';
-                } else if (trimmedText.toLowerCase().includes("omg") || trimmedText.toLowerCase().includes("wow") || trimmedText.toLowerCase().includes("incredible")) {
-                    formattedText += '!';
-                } else {
-                    formattedText += '.';
+            // Backspace functionality
+            document.getElementById("backspace-btn").addEventListener("click", () => {
+                const resultElement = document.getElementById("result");
+                let currentText = resultElement.innerText;
+                if (currentText.length > 0) {
+                    resultElement.innerText = currentText.slice(0, -1); // Remove the last character
                 }
+            });
 
-                lastResult = formattedText; // Store the last formatted result
-                return formattedText;
-            }
-
-            // Event when speech is recognized
             recognition.onresult = (event) => {
                 const speechToText = event.results[event.resultIndex][0].transcript;
-                const formattedOutput = formatText(speechToText);
-                document.getElementById("result").innerHTML += (formattedOutput + '<br>');
+                document.getElementById("result").innerText = (document.getElementById("result").innerText + ' ' + speechToText).trim();
             };
 
-            // Event for errors
             recognition.onerror = (event) => {
                 const errorMessage = {
                     'no-speech': 'No speech was detected. Please try again.',
@@ -94,22 +97,14 @@
                 document.getElementById("result").innerText = errorMessage[event.error] || 'Error occurred during recognition.';
             };
 
-            // Automatically stop when no audio is detected
             recognition.onend = () => {
                 if (isRecording) {
-                    document.getElementById("result").innerText += '\nListening stopped. Click "Start Listening" to continue.';
                     document.getElementById("start-btn").innerText = "Start Listening";
                     isRecording = false;
                 }
             };
 
-            // Restart recognition when audio is detected
-            recognition.onstart = () => {
-                console.log('Voice recognition activated. Try speaking into the microphone.');
-            };
-
         } else {
-            console.error("SpeechRecognition is not supported in this browser.");
             document.getElementById("result").innerText = "SpeechRecognition is not supported in this browser.";
         }
     </script>
